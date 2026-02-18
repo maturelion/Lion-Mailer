@@ -1,0 +1,33 @@
+{
+  "name": "lion-mailer",
+  "version": "1.0.0",
+  "main": "Lion-Mailer.js",
+  "dependencies": {
+    "cheerio": "latest",
+    "csv-parse": "^6.1.0",
+    "dotenv": "latest",
+    "fakerator": "latest",
+    "fs-extra": "^11.3.3",
+    "got": "latest",
+    "nodemailer": "latest",
+    "puppeteer": "latest",
+    "scramjet": "latest",
+    "socks": "latest"
+  },
+  "scripts": {
+    "start": "ts-node Lion-Mailer.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "LION-MAILER",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^25.2.3",
+    "@types/nodemailer": "^7.0.10",
+    "bytenode": "latest",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
