@@ -23,6 +23,45 @@ echo %ESC%[1;37m      LION-MAILER MODERN ENGINE          %ESC%[0m
 echo %ESC%[1;33m=========================================%ESC%[0m
 echo.
 echo %ESC%[32m[+] STATUS: %ESC%[1;32mREADY%ESC%[0m
+echo %ESC%[32m[+] ACTION: %ESC%[1;37mCHECKING DEPENDENCIES...%ESC%[0m
+echo.
+
+:: Check if node_modules exists
+if not exist "node_modules\" (
+    echo %ESC%[33m[!] WARNING: node_modules not found. Installing dependencies...%ESC%[0m
+    
+    :: Check for pnpm
+    where pnpm >nul 2>nul
+    if !errorlevel! equ 0 (
+        echo %ESC%[32m[+] Found pnpm. Installing...%ESC%[0m
+        call pnpm install
+    ) else (
+        :: Fallback to npm
+        where npm >nul 2>nul
+        if !errorlevel! equ 0 (
+            echo %ESC%[33m[!] pnpm not found. Falling back to npm...%ESC%[0m
+            call npm install
+        ) else (
+            echo.
+            echo %ESC%[31m[!] ERROR: Neither pnpm nor npm found!%ESC%[0m
+            echo %ESC%[1;37mPlease install Node.js from https://nodejs.org/%ESC%[0m
+            echo %ESC%[1;37mThen run: npm install -g pnpm%ESC%[0m
+            echo.
+            pause
+            exit /b 1
+        )
+    )
+
+    if !errorlevel! neq 0 (
+        echo.
+        echo %ESC%[31m[!] ERROR: Failed to install dependencies.%ESC%[0m
+        pause
+        exit /b !errorlevel!
+    )
+    echo %ESC%[32m[+] SUCCESS: Dependencies installed successfully.%ESC%[0m
+    echo.
+)
+
 echo %ESC%[32m[+] ACTION: %ESC%[1;37mSTARTING ENGINE...%ESC%[0m
 echo.
 
