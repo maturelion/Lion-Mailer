@@ -62,11 +62,17 @@ if not exist "node_modules\" (
     echo.
 )
 
+set "ENV_FILE=%~1"
+if "!ENV_FILE!"=="" set "ENV_FILE=config.env"
+set "ENV_PARAM=--env=!ENV_FILE!"
+
+echo %ESC%[32m[+] CONFIG: %ESC%[1;37mUSING ENV: !ENV_FILE!%ESC%[0m
+
 echo %ESC%[32m[+] ACTION: %ESC%[1;37mSTARTING ENGINE...%ESC%[0m
 echo.
 
 :: We use 'call' and 'pnpm run start' for the most reliable execution
-call pnpm run start
+call pnpm run start -- %ENV_PARAM%
 
 echo.
 echo %ESC%[33m=========================================%ESC%[0m

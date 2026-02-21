@@ -1,5 +1,19 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+
+// Parse command line arguments for --env=filepath
+const getEnvPath = (): string => {
+    const envArg = process.argv.find(arg => arg.startsWith('--env='));
+    if (envArg) {
+        return envArg.split('=')[1];
+    }
+    return 'config.env';
+};
+
+const envPath = getEnvPath();
+dotenv.config({ path: path.resolve(process.cwd(), envPath) });
+
+console.log(`[CONFIG] Loading environment from: ${envPath}`);
 
 export interface SMTPAccount {
     host?: string;
