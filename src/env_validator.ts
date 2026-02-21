@@ -1,11 +1,13 @@
 import { Config } from './config';
+import fs from 'fs-extra';
+import path from 'path';
 
 export class EnvValidator {
     /**
      * Validates the configuration and environment variables.
      * Throws an error if critical values are missing or malformed.
      */
-    public static validate(config: Config): void {
+    public static async validate(config: Config): Promise<void> {
         console.log("VALIDATOR: Checking environment health...");
         const errors: string[] = [];
 
@@ -23,12 +25,15 @@ export class EnvValidator {
                 }
 
                 // Validate fromEmail
-                if (!account.fromEmail || account.fromEmail.length === 0 || !account.fromEmail[0]) {
+                const fromEmail = account.fromEmail;
+                const emailToValidate = Array.isArray(fromEmail) ? fromEmail[0] : fromEmail;
+
+                if (!emailToValidate) {
                     errors.push(`SMTP_${id}: From Email address is missing.`);
-                } else if (!this.isValidEmail(account.fromEmail[0])) {
+                } else if (!this.isValidEmail(emailToValidate)) {
                     // Primitive check for email format, allowing placeholders
-                    if (!account.fromEmail[0].includes('{{')) {
-                        errors.push(`SMTP_${id}: '${account.fromEmail[0]}' is not a valid email format.`);
+                    if (!emailToValidate.includes('{{')) {
+                        errors.push(`SMTP_${id}: '${emailToValidate}' is not a valid email format.`);
                     }
                 }
             });
@@ -40,6 +45,21 @@ export class EnvValidator {
         // 3. Check Message Config
         if (config.message.subject.length === 0) errors.push("Message: At least one Subject is required.");
         if (config.message.fromName.length === 0) errors.push("Message: At least one From Name is required.");
+
+        // 4. Check Template Directories
+        const baseDir = path.join(process.cwd(), 'Lion-Mailer');
+        const requiredDirs = ['Letter', 'Text'];
+        for (const dir of requiredDirs) {
+            const dirPath = path.join(baseDir, dir);
+            if (!await fs.pathExists(dirPath)) {
+                errors.push(`Directory: 'Lion-Mailer/${dir}' is missing.`);
+            } else {
+                const files = await fs.readdir(dirPath);
+                if (files.length === 0) {
+                    errors.push(`Directory: 'Lion-Mailer/${dir}' is empty. At least one template file is required.`);
+                }
+            }
+        }
 
         if (errors.length > 0) {
             console.error("\n" + "=".repeat(50));
